@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador Rápido de Envíos - Pastelería Jacobo</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: #f1f5f9; margin: 0; padding: 16px; display: flex; justify-content: center; }
+    .container { background: #ffffff; width: 100%; max-width: 580px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
+    h1 { font-size: 1.35rem; margin: 0 0 16px 0; text-align: center; color: #0f172a; }
+    .filtros { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
+    label { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 4px; display: block; }
+    select, input { width: 100%; padding: 12px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s; }
+    select:focus, input:focus { border-color: #2563eb; }
+    .contador { font-size: 0.8rem; color: #64748b; margin-bottom: 10px; text-align: right; }
+    .lista { display: flex; flex-direction: column; gap: 8px; max-height: 480px; overflow-y: auto; padding-right: 4px; }
+    .card-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .card-item:hover { background: #f1f5f9; }
+    .info-zona { display: flex; flex-direction: column; gap: 3px; }
+    .nombre-zona { font-weight: 600; color: #1e293b; font-size: 0.95rem; }
+    .tag-sucursal { font-size: 0.75rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; display: inline-block; width: fit-content; }
+    .tag-rio { background: #e0f2fe; color: #0369a1; }
+    .tag-otay { background: #fef3c7; color: #b45309; }
+    .tag-monarca { background: #f3e8ff; color: #7e22ce; }
+    .tag-todas { background: #dcfce7; color: #15803d; }
+    .precio-val { font-size: 1.15rem; font-weight: 700; color: #0f172a; white-space: nowrap; }
+    .precio-gratis { color: #16a34a; }
+    .sin-datos { text-align: center; color: #94a3b8; padding: 30px 10px; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🍰 Cotizador de Envíos</h1>
+
+  <div class="filtros">
+    <div>
+      <label for="filtroSucursal">Filtrar por Sucursal:</label>
+      <select id="filtroSucursal" onchange="filtrar()">
+        <option value="todas">Todas las sucursales</option>
+        <option value="rio">Sucursal Río</option>
+        <option value="otay">Sucursal Otay</option>
+        <option value="monarca">Sucursal Monarca</option>
+        <option value="foraneas">Foráneas (Rosarito / Tecate / Ensenada)</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="busqueda">Buscar colonia, parque industrial o plaza:</label>
+      <input type="text" id="busqueda" placeholder="Ej. Landmark, New City, Soler, UABC..." oninput="filtrar()" autofocus>
+    </div>
+  </div>
+
+  <div id="contador" class="contador"></div>
+  <div id="lista" class="lista"></div>
+</div>
+
+<script>
+const baseDatos = [
+  // --- SUCURSAL RÍO (Actualizada con puntos exactos) ---
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "CFE Río", precio: 0 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Hospital SIMNSA", precio: 0 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Plaza Pueblo Amigo", precio: 0 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Hospital NewCity / NewCity Medical Plaza", precio: 0 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Palacio Municipal Tijuana", precio: 0 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Plaza Río Tijuana", precio: 0 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "The Landmark Tijuana (Agua Caliente)", precio: 50 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Grand Hotel Tijuana (Las Torres)", precio: 70 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Zona Centro (Av. Revolución / Calle 1ra a 11va)", precio: 70 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Zona Urbana Río (CEART / Hospital General)", precio: 70 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Madero (La Cacho) / Dávila", precio: 80 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Gabilondo / Aviación / Cuauhtémoc", precio: 80 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Zona Norte / Empleados Federales", precio: 80 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Chapultepec / Club Campestre", precio: 90 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Hipódromo / Agua Caliente", precio: 90 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. 20 de Noviembre / Sepanal", precio: 90 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Libertad (Parte Baja y Media)", precio: 100 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Castillo / Morelos / Altamira", precio: 110 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Independencia", precio: 150 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Linda Vista / Col. Alemán", precio: 150 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Roma", precio: 150 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Fundadores / El Rubí / Francisco Villa", precio: 150 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Col. Herrera", precio: 170 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Soler / El Mirador", precio: 180 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Lázaro Cárdenas / La Herradura / Palmeras", precio: 180 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Playas de Tijuana (Costa, Monumental, Jardines)", precio: 200 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "San Antonio de los Buenos / Obrera (1ra, 2da, 3ra)", precio: 200 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Salvatierra / Flores Magón / Divina Providencia", precio: 210 },
+  { suc: "rio", nombreSuc: "Suc. Río", tagClass: "tag-rio", zona: "Santa Fe (Secciones 1 a 5) / La Gloria / Cedros", precio: 240 },
+
+  // --- SUCURSAL OTAY ---
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "UABC Unidad Otay / Instituto Tecnológico de Tijuana", precio: 0 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Plaza Alameda Otay / Otay Universidad", precio: 0 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Indeco Universidad (Antes del Parque de la Amistad)", precio: 0 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Parque Industrial de la Amistad", precio: 70 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Aeropuerto Internacional de Tijuana", precio: 80 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Nueva Tijuana / FOVISSSTE Otay", precio: 80 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Otay Constituyentes / Garita de Otay", precio: 80 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Otay Galerías / Otay Vista / Maestros", precio: 90 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Col. Postal / Mineral de Santa Fe", precio: 100 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Parque Industrial Chilpancingo / Murúa", precio: 140 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Parque Industrial Frontera / Bellas Artes", precio: 150 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Las Torres (Otay)", precio: 180 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Col. 10 de Mayo", precio: 180 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Granjas Familiares del Matamoros (Zona Alta Otay)", precio: 180 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Nido de las Águilas / Rinconada de Otay", precio: 200 },
+  { suc: "otay", nombreSuc: "Suc. Otay", tagClass: "tag-otay", zona: "Parque Industrial Nordika", precio: 220 },
+
+  // --- SUCURSAL MONARCA ---
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Casa Blanca", precio: 70 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Plaza Monarca / El Águila", precio: 70 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Guaycura / Ampliación Guaycura", precio: 80 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Buenos Aires Sur / Buenos Aires Norte", precio: 90 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Jardín Dorado / Montebello", precio: 90 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Loma Bonita / Praderas de la Mesa", precio: 90 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Col. Insurgentes / Los Álamos", precio: 100 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Macroplaza / Parque Morelos / Mundo Divertido", precio: 100 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Parque Industrial El Águila / Lago", precio: 100 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Mariano Matamoros (Centro / Norte / Sur)", precio: 120 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Villa Fontana / Villa del Real / Villa del Sol", precio: 130 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "El Pípila / Las Huertas / La Mesa 5 y 10", precio: 130 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "El Florido (Secciones 1, 2, 3 y 4)", precio: 150 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Parque Industrial El Florido", precio: 160 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Terrazas del Valle / La Morita / El Refugio", precio: 190 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Paseos del Vergel / El Realito", precio: 200 },
+  { suc: "monarca", nombreSuc: "Suc. Monarca", tagClass: "tag-monarca", zona: "Fracc. Natura / Delicias / Villa del Campo", precio: 240 },
+
+  // --- FORÁNEAS ---
+  { suc: "foraneas", nombreSuc: "Cualquier Sucursal", tagClass: "tag-todas", zona: "Playas de Rosarito (Centro / Pabellón / Blvd. Popotla)", precio: 700 },
+  { suc: "foraneas", nombreSuc: "Cualquier Sucursal", tagClass: "tag-todas", zona: "Tecate (Zona Centro / Paso del Águila / Parque Industrial)", precio: 1800 },
+  { suc: "foraneas", nombreSuc: "Cualquier Sucursal", tagClass: "tag-todas", zona: "Ensenada (Centro / El Sauzal / Valle de Guadalupe)", precio: 3200 }
+];
+
+function filtrar() {
+  const query = document.getElementById('busqueda').value.toLowerCase().trim();
+  const sucSeleccionada = document.getElementById('filtroSucursal').value;
+  const contenedor = document.getElementById('lista');
+  const contador = document.getElementById('contador');
+
+  const normalizar = (txt) => txt.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const busquedaNorm = normalizar(query);
+
+  const resultados = baseDatos.filter(item => {
+    const coincideSuc = (sucSeleccionada === 'todas') || 
+                        (sucSeleccionada === 'foraneas' && item.suc === 'foraneas') ||
+                        (item.suc === sucSeleccionada) ||
+                        (item.suc === 'foraneas');
+
+    const coincideTexto = normalizar(item.zona).includes(busquedaNorm) || 
+                          normalizar(item.nombreSuc).includes(busquedaNorm);
+
+    return coincideSuc && coincideTexto;
+  });
+
+  contador.innerText = `${resultados.length} ubicaciones encontradas`;
+
+  if (resultados.length === 0) {
+    contenedor.innerHTML = `
+      <div class="sin-datos">
+        No se encontró la colonia o empresa.<br>
+        <strong>Sugerencia:</strong> Cotiza con gerencia o calcula km adicionales.
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  resultados.forEach(item => {
+    const precioFmt = item.precio === 0 ? "GRATIS" : `$${item.precio.toLocaleString('es-MX')} MXN`;
+    const gratisClass = item.precio === 0 ? "precio-gratis" : "";
+    html += `
+      <div class="card-item">
+        <div class="info-zona">
+          <span class="nombre-zona">${item.zona}</span>
+          <span class="tag-sucursal ${item.tagClass}">${item.nombreSuc}</span>
+        </div>
+        <div class="precio-val ${gratisClass}">${precioFmt}</div>
+      </div>
+    `;
+  });
+
+  contenedor.innerHTML = html;
+}
+
+// Iniciar al cargar
+filtrar();
+</script>
+
+</body>
+</html>
